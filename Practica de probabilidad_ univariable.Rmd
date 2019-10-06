@@ -1,0 +1,160 @@
+---
+title: "Práctica Variable Unidimensional"
+author:
+- Mónica Alexa
+- Raúl Salazar de Torres
+- Jorge Fernández Hernández
+- Carlos Sánchez Vega
+date: "5 de noviembre de 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Ejercicio de práctica de variable unidimensional
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Una empresa de servicios de Internet quiere hacer una campaña para aplicar entre un 5% y un 25% de
+descuento a sus clientes de forma aleatoria y lineal, y entonces la probabilidad de que un cliente reciba un
+determinado descuento se puede modelizar mediante la siguiente función de densidad:
+
+$$ f(x) =  \begin{cases}
+k(25 - x) & 5\leq x \leq25\\0 & resto\end{cases} $$
+
+
+#### 1. Calcula k para que f(x) sea realmente una funcion de densidad
+
+Se trata de una función continua. Para que una f(x) sea una función de densidad tiene que cumplir las condiciones:
+1. f(x)>=0, para cualquier x perteneciendo a R, que en este caso lo cumple
+2. $$ \int\limits_{−∞}^{∞} f(x) dx = 1$$
+
+En el caso de nuestra función tiene que cumplir: $$ \int\limits_{5}^{25} k(25 - x) = 1 $$ ya que para el resto la función toma valor igual a cero. Resolviendo la integral:
+
+$$ \left [ -k·(\frac{x²}{2}-25x) \right ]_5^{25}=1 $$
+Despejamos k:
+```{r}
+1/integrate(function(x) (25 - x), 5, 25)$value
+```
+
+Utilizando la función solve:
+```{r}
+solve(integrate(function(x) (25 - x), 5, 25)$value,1) 
+```
+
+**El resultado de K es 1/200. Por lo tanto nuestra función será:**
+$$ f(x) =  \begin{cases} 0.125 - 0.005·x & 5\leq x \leq25\\0 & resto\end{cases} $$
+
+Comprobamos que el valor de la integral es igual a 1:
+```{r}
+f = function(x) 0.125-0.005*x
+integrate(f,5,25)
+```
+Representamos la función y vemos que es una función lineal descreciente:
+
+```{r}
+library(ggplot2)
+f_plot = ggplot(data.frame(x=c(5, 25)), aes(x)) + 
+            stat_function(fun=f, geom="line") + 
+            ylim(0, 0.11) + 
+            labs(x="Descuento (%)", y="f(x)") 
+f_plot
+```
+
+
+#### 2. Calcula la probabilidad de que un cliente obtenga más de un 20% de descuento
+
+**La probabilidad de que un cliente obtenga más de un 20% es igual al area de debajo de la curva en el intervalo $\left [20, 25 \right ]$. Por lo tanto calculamos la integral:** $$ \int\limits_{5}^{20} 0.125 - 0.005·x dx $$
+
+```{r}
+prob_20 = function(x) 0.125-0.005*x
+integrate(prob_20,20,25)
+```
+$$P(X \geq 20) = 0.0625 $$
+
+#### 3. ¿Cuál es el descuento medio que se espera aplicar?
+
+**Para averiguar el valor del descuento medio necesitamos calcular la esperanza, en nuestro caso:**
+$$ \mu = E(X) = \int_{5}^{25} x·(0.125 - 0.005·x)  dx $$
+```{r}
+f1 = function(x) x*f(x)
+integrate(f1, 5, 25)
+```
+$$ \mu = 11.66667 $$
+
+#### 4. Calcula la varianza de la variable aleatoria
+
+**La varianza es el parámetro de dispersión de la variable. En nuestro caso:**
+$$ \sigma ^{2} = V(x) = E[X^{2}] - [E(X)]^{2} = \int_{5}^{25} x^2 (0.125 - 0.005·x) dx- \mu² $$
+
+```{r}
+f2 = function(x) (x^2)*f(x)
+esperanzacont <- integrate(f1, 5, 25)
+integrate(f2, 5, 25)$value - esperanzacont$value^2
+
+```
+$$ \sigma ^{2} = 22.22222 $$
+
+#### 5. ¿Entre qué valores estarán probablemente la mitad de los descuentos realizados (en la zona central de la distribución)?
+
+La mitad de los descuentos se encuentran entre el primer y el tercer cuartil o entre los cuantiles 0.25 y 0.75. Para calcular los cuantiles necesitamos calcular la función de distribución y luego su inversa:
+```{r}
+distribucion_f = function(q) integrate(function(x) f(x), 5, q)[[1]]
+```
+```{r}
+cuantil = function(p) uniroot(function(x) distribucion_f(x) - p, c(5, 25))[[1]]
+cuantil(0.25)
+cuantil(0.75)
+```
+**Por lo tanto la mitad de los descuentos estarán en el intervalo** $\left [7.679492, 15 \right ]$
+
+```{r}
+library(ggplot2)
+valor_y = f(c(5, 25))
+
+f_plot = ggplot(data.frame(x=c(5, 25), y=valor_y), mapping = aes(x = x, y = y)) + 
+            stat_function(fun=f, geom="line") + 
+            geom_line()+
+          geom_area(mapping = aes(x = c(7.679492, 15),y=f(c(7.679492, 15)) ), fill ='red') +
+            ylim(0, 0.11) + 
+            labs(x="Descuento (%)", y="f(x)") 
+            
+            
+f_plot
+
+```
+
+#### 6. ¿Cuál es la moda de la variable aleatoria?
+
+La moda es el punto de máxima densidad. En el caso de una función lineal como la nuestra se encuentra en uno de los extremos. Calculamos los dos aunque en principio ya habiamos visto que se trata de una función decreciente, **por lo tanto la moda es igual a 5**:
+
+
+```{r}
+f(5)
+f(25)
+```
+
+También lo podemos calcular con:
+```{r}
+optimize(f, interval=c(5, 25), maximum=TRUE)$maximum
+```
+
+$$M_{o} = 5$$
+
+#### 7. Calcula la mediana de la variable aleatoria
+
+**La mediana es cuantil 0.5.** 
+
+```{r}
+cuantil(0.5)
+```
+$$M_{e} = 10.85786$$
+
+
+
+
+
+
+
