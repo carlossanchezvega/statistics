@@ -1,0 +1,214 @@
+---
+title: "Examen Final"
+author:
+- Carlos Sánchez Vega
+date: '2017'
+output:
+  pdf_document:
+    includes:
+      in_header: header.tex
+    latex_engine: xelatex
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+  html_document:
+    toc: yes
+    toc_depth: '3'
+fontsize: 12pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Análisis de los datos
+El objetivo de esta práctica es es verificar si hay algunos tipos de deporte que estéen relacionados con menor indice de masa corporal para una base de datos de deportistas australianos.
+
+```{r}
+library(dplyr)
+library(magrittr)
+library(knitr)
+library(ggplot2)
+```
+
+El primer paso será leer el fichero de datos  
+```{r}
+deportistas <- read.csv(file="/home/csanchez/Downloads/Deportistas.csv", 
+                        header=TRUE, sep=",")
+```
+A continuación, realizaremos un análisis de los datos:
+En primer lugar deberemos distinguir cuáles son las variables cualitativas y cuales son las cuantitativas en el caso de los datos de los deportistas:
+
+\begin{itemize}
+\item Deporte Practicado
+\item Sexo
+\end{itemize}
+
+En lo que respecta a las variables cuantitativas, se pueden destacar todas las demás columnas. Es decir:
+
+\begin{itemize}
+\item Ht (altura)
+\item Wt (peso)
+\item BMI (porcentaje de masa corporal)
+\item Bt (Porcentaje de grasa)
+\end{itemize}
+
+Por tanto, tendremos que hacer un análisis de las variables cuantitavivas en función de las cualitativas,ambas mencionadas anteriormente:
+
+Para mejorar la legibilidad, voy a sustituir el valor de los valores "0" (por"Hombre"") y "1" (por "Mujer")
+
+
+```{r}
+deportistas$Sex[deportistas$Sex=="0"]<-"Hombre" 
+deportistas$Sex[deportistas$Sex=="1"]<-"Mujer" 
+```
+Para predecir las relaciones agruparemos los datos por las variables cualitativas, es decir,  el deporte y el sexo. 
+Empezaremos agrupando por deporte, calculando los deportes que tienen menor media de porcentaje de masa corporal:
+```{r}
+
+deportistas %>%   group_by(Sport) %>%
+  select(Sport, Ht, Wt, BMI, Bfat) %>%
+  summarise_all(funs(mean, median, min, max))%>%arrange(BMI_mean)
+```
+Agrupando por deporte, se podría pensar que el deporte que conlleva menor porcentaje de masa corporal es "Gym"
+
+
+
+```{r}
+deportistas %>%   group_by(Sex) %>%
+  select(Sex, Ht, Wt, BMI, Bfat) %>%
+  summarise_all(funs(mean, median, min, max))%>%arrange(BMI_mean)
+```
+Agrupando por sexo, se podría pensar que el sexo que posee menor porcentaje de masa corporal son las mujeres
+
+
+```{r}
+deportistas %>%   group_by(Sex,Sport) %>%
+  select(Sex,Sport, Ht, Wt, BMI, Bfat) %>%
+  summarise_all(funs(mean, median, min, max))%>%arrange( Sex,BMI_mean)
+```
+Por último, si agrupamos por sexo y deporte se puede determinar que el deporte que tiene asociado menor porcentaje de masa corporal para hombres son los "400 metros" de carrera y, en el caso de las mujeres, el deporte sería "gym". 
+
+No obstante, para poder determinar que exista alguna relación entre el deporte y el porcentaje de masa corportal, independientemente del sexo, seria necesario que existieran registros en todos los deportes para ambos sexos . Sin embargo, hay deportes como "gym" para hombres, de los que no se tienen datos.
+
+
+
+## Constraste de hipotesis
+Queremos contrastar si los índices de masa corporal de cualquier deporte son iguales.
+Para hacer un contraste de hipótesis, se deben seguir los siguientes pasos: 
+\begin{itemize}  
+\item Hacer un contraste de medias 
+\item Hacer un contraste de varianzas
+\end{itemize}
+
+
+La hipótesis nula consistiría en que la comparativa de las medias de dos deportes de la muestra, por ejemplo "b_ball" y  "field", son iguales en los dos deportes contra la hipótesis alternativa,que reflejaría que las medias que son distintas. Formalmente el contraste que se pide es
+
+$$
+\left\{
+\begin{array}{ll}
+H_{0}: &  \mu=\mu_0\\
+H_{1}: & \mu\neq\mu_0
+\end{array}
+\right.
+$$
+Como las muestras de las que disponemos son grandes, podemos usar el t-test:
+
+Seleccionamos las filas correspondientes a ambos deportes:
+```{r}
+bball = deportistas%>% filter(Sport=="b_ball")
+field = deportistas %>% filter(Sport=="field") 
+```
+Comenzamos analizando el caso de la hipótesis nula:
+Calculamos su t-test:
+```{r}
+sol.ttest.vareq=t.test(bball$BMI,field$BMI,alternative="two.side",
+                       var.equal=TRUE,conf.level=0.95)
+sol.ttest.vareq
+```
+Calculamos el p-valor
+```{r}
+sol.ttest.vareq$p.value
+```
+
+Calculamos su intervalo de confianza
+```{r}
+sol.ttest.vareq$conf.int
+```
+
+
+A continuación, nos centraremos en el caso de la hipótesis alternativa:
+
+Calculamos su t-test:
+```{r}
+sol.ttest.varneq=t.test(bball$BMI,field$BMI,alternative="two.side",
+                        var.equal=FALSE,conf.level=0.95)
+sol.ttest.varneq
+```
+
+
+
+Calculamos su p-valor
+```{r}
+sol.ttest.varneq$p.value
+```
+Calculamos el intervalo de confianza
+```{r}
+sol.ttest.varneq$conf.int
+```
+
+En conclusión:
+
+\begin{itemize}  
+\item Los p-valores de ambos contrastes son muy pequeños: 1.014546*10-06 (caso de que las medias sean iguales) y 2.379856×10−5 (caso en el que las medias sean diferentes). 
+\item sus intervalos de confianza del 95% para la diferencia de medias
+[-7.145401 -3.416747] y [-7.368029 -3.194119] no contienen al cero
+\end{itemize}
+Por ello,tenemos evidencias para rechazar la hipótesis de que las medias de los dos deportes son iguales contra que son distintas. 
+
+
+Contraste para la igualdad de varianzas:
+Ahora haremos el contraste de  las varianzas poblacionales de los dos deportes anteriormente mostrados. La hipótesis nula consistiría en decir que ambas tienen la misma varianza, contra la hipótesis alternativa, que consistiría en decir que las varianzas son distintas.
+
+
+$$
+\left\{
+\begin{array}{ll}
+H_{0}: &  \sigma=\sigma_0\\
+H_{1}: & \sigma\neq\sigma_0
+\end{array}
+\right.
+$$
+
+
+Para realizar nuestros cálculos, usaremos el test de igualdad de varianzas de Fisher. Podríamos decir que en realidad lo que se contrasta es:
+
+$$
+\left\{
+\begin{array}{ll}
+H_0: & \frac{\sigma_1^2}{\sigma_2^2}=1\\
+H_0: & \frac{\sigma_1^2}{\sigma_2^2}\neq 1
+\end{array}
+\right.
+$$
+Es decir. queremos analizar si los intervalos de confianza contienen el 1.
+
+```{r}
+sol.var.test=var.test(bball$BMI,field$BMI,ratio=1,alternative="two.sided",
+                      conf.level=0.95)
+sol.var.test
+```
+Hallamos su p-valor
+```{r}
+sol.var.test$p.value
+```
+
+Hallamos su intervalo de confianza
+```{r}
+sol.var.test$conf.int
+
+```
+
+Como el p-valor es 0.0006526505 y es menor que 0.05, podemos rechazar la hipótesis nula, que consiste en decir que las varianzas son iguales contra que son distintas.
+
+En conclusión, podemos concluir que los dos deportes no tienen un porcentajes de masa corporal iguales y, por tanto,los porcentajes de masa corporal son dependientes del deporte.
